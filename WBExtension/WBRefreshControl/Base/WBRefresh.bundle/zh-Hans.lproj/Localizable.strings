@@ -1,0 +1,16 @@
+"WBRefreshHeaderDefaultText" = "下拉可以刷新";
+"WBRefreshHeaderPullingText" = "松开立即刷新";
+"WBRefreshHeaderRefreshingText" = "正在刷新数据中...";
+
+"WBRefreshAutoFooterDefaultText" = "点击或上拉加载更多";
+"WBRefreshAutoFooterRefreshingText" = "正在加载更多的数据...";
+"WBRefreshAutoFooterNoMoreDataText" = "已经全部加载完毕";
+
+"WBRefreshBackFooterDefaultText" = "上拉可以加载更多";
+"WBRefreshBackFooterPullingText" = "松开立即加载更多";
+"WBRefreshBackFooterRefreshingText" = "正在加载更多的数据...";
+"WBRefreshBackFooterNoMoreDataText" = "已经全部加载完毕";
+
+"WBRefreshHeaderLastTimeText" = "最后更新:";
+"WBRefreshHeaderDateTodayText" = "今天";
+"WBRefreshHeaderNoneLastDateText" = "无记录";
