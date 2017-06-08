@@ -11,7 +11,7 @@ import UIKit
 
 // MARK: - 支付结果状态码
 
-public enum WB_Pay_ErrorCode : Int{
+public enum WBPayResultCode {
     case success
     case failure
     case cancle
@@ -35,7 +35,7 @@ public class PayManager: NSObject, WXApiDelegate {
     }
     
     /// 对支付结果进行回调
-    public typealias completeCallBack=(_ errorCode:WB_Pay_ErrorCode, _ errorString:String) -> Void
+    public typealias completeCallBack = (_ errorCode:WBPayResultCode, _ errorString:String, _ result:Any?) -> Void
     
     private var callBack: completeCallBack?  // 缓存回调
     private var appSchemeDict = [String: String]()  // 缓存appScheme
@@ -46,22 +46,21 @@ public class PayManager: NSObject, WXApiDelegate {
     /// 处理跳转的URL，回到应用，在AppDelegate中实现
     public func wb_handleURL(_ url:URL?) -> Bool {
         guard let url = url else {
-            WB_Log("请求支付的url地址不符合要求!")
+            WHLogs("请求支付的url地址不符合要求!")
             return false
         }
         if url.host == "pay" {
             // 微信支付
             return WXApi.handleOpen(url, delegate: self)
-            
         }else if url.host == "safepay" {
             // 支付宝支付
             // 跳转到支付宝钱包支付，处理支付结果(在app被杀时，通过该方法获取支付结果)
             AlipaySDK.defaultService().processOrder(withPaymentResult: url, standbyCallback: { [unowned self] (resultDict) in
                 if let resultDict = resultDict {
-                    WB_Log("app已被kill,钱包支付结果为___:\(resultDict)")
+                    WHLogs("app已被kill, 钱包支付结果为___:\(resultDict)")
                     let resultStatus = resultDict["resultStatus"] as? String ?? ""
                     var errorStr = resultDict["memo"] as? String ?? ""
-                    var errorCode:WB_Pay_ErrorCode = .success
+                    var errorCode:WBPayResultCode = .success
                     switch resultStatus {
                     case "9000":
                         // 成功
@@ -70,14 +69,15 @@ public class PayManager: NSObject, WXApiDelegate {
                     case "6001":
                         // 用户取消
                         errorCode = .cancle
-                        errorStr = "用户取消支付！"
+                        errorStr = "用户取消支付!"
                     default:
                         // 失败
                         errorCode = .failure
                     }
                     // 对支付结果进行回调,实际结果需从服务端去支付宝服务器查询
                     if let closure = self.callBack {
-                        closure(errorCode, errorStr)
+                        closure(errorCode, errorStr, resultDict)
+                        self.callBack = nil
                     }
                 }
             })
@@ -85,7 +85,7 @@ public class PayManager: NSObject, WXApiDelegate {
             // 授权跳转支付宝钱包支付，处理支付结果
             AlipaySDK.defaultService().processAuth_V2Result(url, standbyCallback: { (resultDict) in
                 if let resultDict = resultDict {
-                    WB_Log("支付宝授权支付结果为___:\(resultDict)")
+                    WHLogs("支付宝授权支付结果为___:\(resultDict)")
                     // 解析auth code
                     let result = resultDict["result"] as? String ?? ""
                     var authCode: String = ""
@@ -98,7 +98,7 @@ public class PayManager: NSObject, WXApiDelegate {
                             }
                         }
                     }
-                    WB_Log("支付宝授权支付授权结果为___:\(authCode)")
+                    WHLogs("支付宝授权支付授权结果为___:\(authCode)")
                 }
             })
             return true
@@ -109,25 +109,24 @@ public class PayManager: NSObject, WXApiDelegate {
     ///  注册App，需要在 didFinishLaunchingWithOptions 中调用
     public func wb_registerApp() {
         guard let dictionary = Bundle.main.infoDictionary else {
-            WB_Log("info.plist 不存在")
+            WHLogs("info.plist 不存在")
             return
         }
-        let urlTypes = dictionary["CFBundleURLTypes"] as? NSArray ?? []
-        if urlTypes.count == 0{
-            WB_Log("请在Info.plist 中添加支付的URL Type!")
+        let urlTypes = dictionary["CFBundleURLTypes"] as? [[String: Any]] ?? []
+        if urlTypes.isEmpty {
+            WHLogs("请在Info.plist 中添加支付的URL Type!")
             return
         }
         for urlTypeDict in urlTypes {
-            guard let urlDictionary = urlTypeDict as? NSDictionary else { continue }
-            let urlName = urlDictionary.object(forKey: "CFBundleURLName") as? String ?? ""
-            let urlSchemes = urlDictionary.object(forKey: "CFBundleURLSchemes") as? NSArray ?? []
-            if urlSchemes.count == 0{
+            let urlName = urlTypeDict["CFBundleURLName"] as? String ?? ""
+            let urlSchemes = urlTypeDict["CFBundleURLSchemes"] as? [String] ?? []
+            if urlSchemes.isEmpty {
                 // 添加的URL Type中信息不完善!
-                WB_Log("请在Info.plist的URL Type中添加\(urlName)对应的URL Scheme!")
+                WHLogs("请在Info.plist的URL Type中添加\(urlName)对应的URL Scheme!")
                 return
             }
             // 一个URLName对应一个
-            let urlScheme = urlSchemes.lastObject as? String ?? ""
+            let urlScheme = urlSchemes.last ?? ""
             if urlName == WB_payKey.wechatURLName {
                 appSchemeDict.updateValue(urlScheme, forKey: WB_payKey.wechatURLName)
                 // 注册微信
@@ -146,7 +145,11 @@ public class PayManager: NSObject, WXApiDelegate {
     /// 则跳转到 微信支付 ,且orderMsg不能为nil, rollBack为支付结果回调
     public func wb_payWithOrderMsg(_ orderMsg:Any?, callBack rollBack: completeCallBack?) {
         guard let orderMsg = orderMsg else {
-            WB_Log("订单信息不能为空!")
+            WHLogs("订单信息不能为空!")
+            if let closure = self.callBack {
+                closure(.failure, "订单信息不能为空", nil)
+                self.callBack = nil
+            }
             return
         }
         // 缓存block
@@ -159,20 +162,21 @@ public class PayManager: NSObject, WXApiDelegate {
             let msg = orderMsg as! String
             // 支付宝支付
             if msg.isEmpty {
-                WB_Log("支付宝订单信息不能为空!")
+                WHLogs("支付宝订单信息不能为空!")
                 return
             }
             
             guard let alipayShceme = appSchemeDict[WB_payKey.alipayURLName],  !alipayShceme.isEmpty else {
-                WB_Log("请在Info.plist的URL Type中添加\(WB_payKey.alipayURLName)对应的URL Scheme!")
+                WHLogs("请在Info.plist的URL Type中添加\(WB_payKey.alipayURLName)对应的URL Scheme!")
                 return
             }
             AlipaySDK.defaultService().payOrder(msg, fromScheme: alipayShceme, callback: { [unowned self] (resultDic) in
                 // 处理支付结果
                 if let resultDic = resultDic {
+                    WHLogs(resultDic)
                     let resultStatus = resultDic["resultStatus"] as? String ?? ""
                     var errorStr = resultDic["memo"] as? String ?? ""
-                    var errorCode:WB_Pay_ErrorCode = .success
+                    var errorCode:WBPayResultCode = .success
                     switch resultStatus {
                     case "9000":
                         // 成功
@@ -188,7 +192,8 @@ public class PayManager: NSObject, WXApiDelegate {
                     }
                     // 对支付结果进行回调,实际结果需从服务端去支付宝服务器查询
                     if let closure = self.callBack {
-                        closure(errorCode, errorStr)
+                        closure(errorCode, errorStr, resultDic)
+                        self.callBack = nil
                     }
                 }
             })
@@ -200,7 +205,7 @@ public class PayManager: NSObject, WXApiDelegate {
         // 判断支付类型
         if resp is PayResp {
             // 支付回调
-            var errorCode:WB_Pay_ErrorCode = .success
+            var errorCode:WBPayResultCode = .success
             var errorString = resp.errStr
             switch resp.errCode {
             case 0:
@@ -216,9 +221,11 @@ public class PayManager: NSObject, WXApiDelegate {
                 errorCode = .failure
                 errorString = resp.errStr
             }
-            // 对支付结果进行回调,实际结果需从服务端去微信服务器查询
+            WHLogs("微信支付完成,支付回调结果为----------> \((resp as! PayResp).returnKey)")
+            // 对支付结果进行回调, 实际结果需从服务端去微信服务器查询
             if let closure = self.callBack {
-                closure(errorCode, errorString ?? "")
+                closure(errorCode, errorString ?? "", (resp as! PayResp).returnKey)
+                self.callBack = nil
             }
         }
     }

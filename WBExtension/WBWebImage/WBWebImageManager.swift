@@ -44,7 +44,9 @@ public class WBWebImageManager {
         
         semaphore = DispatchSemaphore(value: 1)
         cache = WBWebImageCache.default
+        // 缓存方式
         cache.cachePolicys = [.disk,.memory]
+        // 清除超时图片缓存
         cache.removeExpirateCache()
         
         operations = {
@@ -105,12 +107,14 @@ public class WBWebImageManager {
                     self.queue.addOperation(operation!)
                     self.lastOperation = operation
                 }
-                if !operation!.downloader.downFinish {
-                    operation!.downloader.callBacks.append(complete)
+                if let downed = operation?.downloader?.downFinish, !downed {
+                    operation?.downloader?.callBacks.append(complete)
                 }else{
                     // 缓存读取
                     DispatchQueue.main_safe {
-                        complete(operation!.downloader.image!)
+                        if let image = operation?.downloader?.image {
+                            complete(image)
+                        }
                     }
                 }
                 self.semaphore.signal()

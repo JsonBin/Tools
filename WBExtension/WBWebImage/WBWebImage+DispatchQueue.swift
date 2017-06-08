@@ -22,7 +22,7 @@ extension DispatchQueue {
 
 public class WBWebImageOperation : Operation {
     
-    public var downloader: WBWebImageDownloader
+    public var downloader: WBWebImageDownloader?
     
     
     /// init operation
@@ -31,17 +31,17 @@ public class WBWebImageOperation : Operation {
     ///   - url: image url
     ///   - sess: image session
     public init(_ url:ImageURLConvertible, session sess:URLSession) {
-        downloader = try! WBWebImageDownloader(url, session: sess)
-        downloader.downloadImageWithUrlString()
+        downloader = try? WBWebImageDownloader(url, session: sess)
+        downloader?.downloadImageWithUrlString()
     }
     
     public override func start() {
         super.start()
-        downloader.task?.resume()
+        downloader?.task?.resume()
     }
     
     public override func cancel() {
         super.cancel()
-        downloader.task?.cancel()
+        downloader?.task?.cancel()
     }
 }

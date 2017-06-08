@@ -83,10 +83,21 @@ public class WBWebImageDownloader  {
     ///
     /// - Parameter request: 将要响应的Request
     private func downloadImageWithRequest(_ request:URLRequest) {
-        
-        task = _session!.dataTask(with: request, completionHandler: { [unowned self] (data, response, error) in
+        guard let session = _session else {
+            WHLogs("session not be nil!")
+            return
+        }
+        task = session.dataTask(with: request, completionHandler: { [unowned self] (data, response, error) in
             
-            guard let data = data, let _ = error else {
+            if let _ = error {
+                // 下载错误
+                DispatchQueue.main_safe {
+                    NotificationCenter.default.post(name: WBWebImageDownloadFinishNotification, object: nil, userInfo: ["error":WBError.descriptError(10003, message: "任务取消或错误"), "url":self._url.absoluteString])
+                }
+                return
+            }
+            
+            guard let data = data else {
                 // 下载错误
                 DispatchQueue.main_safe {
                     NotificationCenter.default.post(name: WBWebImageDownloadFinishNotification, object: nil, userInfo: ["error":WBError.descriptError(10003, message: "任务取消或错误"), "url":self._url.absoluteString])
@@ -118,7 +129,7 @@ public class WBWebImageDownloader  {
             
             // 发送通知
             DispatchQueue.main_safe {
-                NotificationCenter.default.post(name: WBWebImageDownloadFinishNotification, object: nil, userInfo: ["url":self._url.absoluteString, "image":self.image!])
+                NotificationCenter.default.post(name: WBWebImageDownloadFinishNotification, object: nil, userInfo: ["url":self._url.absoluteString, "image":newImage])
             }
         })
     }

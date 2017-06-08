@@ -55,14 +55,14 @@ extension WBError {
 extension WBError.CacheFailedReason {
     var message: String {
         switch self {
-        case .readFailed(let message,_):
+        case .readFailed(let message, _):
             return message
         }
     }
     
     var error: Error {
         switch self {
-        case .readFailed(_,let error):
+        case .readFailed(_, let error):
             return error
         }
     }

@@ -6,7 +6,7 @@
 //  Copyright © 2017年 HengSu Technology. All rights reserved.
 //
 
-import Foundation
+import UIKit
 
 // MARK: - 对字符串进行相应的延展
 
@@ -33,6 +33,8 @@ public extension WBString {
     public var length: Int {
         return string.characters.count
     }
+    
+    // MARK: - SubString
     
     /// 截取单个字符
     ///
@@ -63,6 +65,8 @@ public extension WBString {
         return string.substring(with: string.characters.index(string.startIndex, offsetBy: r.lowerBound)..<string.characters.index(string.startIndex, offsetBy: r.upperBound))
     }
     
+    // MARK: - String Size
+    
     // 获取字符串所占尺寸
     public func sizeWithFont(_ font:UIFont, maxSize MaxSize:CGSize) -> CGSize {
         let attr = [NSFontAttributeName:font]
@@ -79,6 +83,8 @@ public extension WBString {
         return size.height
     }
     
+    // MARK: - Check String
+    
     /// - 判断字符串的内容等
     
     /// 检验字符串是否为空
@@ -91,7 +97,7 @@ public extension WBString {
         if str == Optional.none {
             return true
         }
-        if str.isKind(of: NSNull.classForCoder()) {
+        if str.isKind(of: NSNull.self) {
             return true
         }
         if str.isEmpty {
@@ -139,6 +145,13 @@ public extension WBString {
             }
         }
         return false
+    }
+    
+    /// 检验是否为6位验证码
+    public var isCode: Bool {
+        let codeRegex = "^[0-9]{6}$"
+        let codePredicate = NSPredicate(format: "SELF MATCHES %@", codeRegex)
+        return codePredicate.evaluate(with: string)
     }
     
     /// 检验是否为全中文
@@ -203,7 +216,7 @@ public extension WBString {
         
         // 通过上面验证，说明身份证合法，还需算准确性
         if flag{
-            if length == 18{
+            if length == 18 {
                 // 将前17位加权因子保存
                 let idCardWiArray = ["7","9","10","5","8","4","2","1","6","3","7","9","10","5","8","4","2"]
                 // 除以11后，可能产生的11位余数、验证码保存
@@ -245,6 +258,8 @@ public extension WBString {
         return flag
     }
     
+    // MARK: - String Color
+    
     /// - 对字符串进行各种转换
     
     // 16进制转为颜色
@@ -252,7 +267,7 @@ public extension WBString {
         var colorStr = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).uppercased()
         // String should be 6 or 8 characters
         if colorStr.str.length < 6 {
-            WB_Log("HexString's length should be 6 or 8, otherwise return blackColor! _____ 16进制数的长度至少为6或8个字符,否则返回为黑色!")
+            WBALog("HexString's length should be 6 or 8, otherwise return blackColor! _____ 16进制数的长度至少为6或8个字符,否则返回为黑色!")
             return UIColor.black
         }
         // 转换成标准16进制数
@@ -261,7 +276,7 @@ public extension WBString {
         }
         // 如果字符串头没包含 "0x" 则不是合格的16进制数
         if !colorStr.hasPrefix("0x"){
-            WB_Log("HexString formal error , otherwise return blackColor! _____ 16进制数的格式错误,否则返回为黑色!")
+            WBALog("HexString formal error , otherwise return blackColor! _____ 16进制数的格式错误,否则返回为黑色!")
             return UIColor.black
         }
         // 十六进制字符串转成整形。
@@ -277,6 +292,8 @@ public extension WBString {
                        alpha: alpha)
     }
     
+    // MARK: - String MD5
+    
     // 字符进行md5加密 <首先引入 <CommonCrypto/CommonDigest.h> >
     public var md5String: String {
         let str = string.cString(using: .utf8)
@@ -291,6 +308,8 @@ public extension WBString {
         result.deinitialize()
         return String(format: hash as String)
     }
+    
+    // MARK: - AttributedString
     
     /// - 对字符串进行一系列的字符操作
     
@@ -310,19 +329,19 @@ public extension WBString {
     public func checkRange(_ range:NSRange) -> WBRangeFormatType {
         let location = range.location
         let len = range.length
-        if location > 0 && len > 0{
-            if (range.location+range.length) <= length{
+        if location >= 0 && len > 0{
+            if (range.location + range.length) <= length {
                 return .correct
             }
-            WB_Log("The range out-of-bounds! ____ range超出字符串的范围!")
+            WBALog("The range out-of-bounds! ____ range超出字符串的范围!")
             return .out
         }
-        WB_Log("The range format is wrong: NSMakeRange(a,b) (a>0,b>0)! ____ range的格式错误!")
+        WBALog("The range format is wrong: NSMakeRange(a,b) (a>=0, b>0)! ____ range的格式错误!")
         return .error
     }
     
     // 改变字符串的字体大小、颜色
-    public func changeColor(_ color:UIColor?, colorRange andColorRange:NSRange?, font andFont:UIFont?, fontRange andFontRange:NSRange?) -> NSMutableAttributedString {
+    public func changeColor(_ color:UIColor?, colorRange andColorRange:NSRange? = nil, font andFont:UIFont?, fontRange andFontRange:NSRange? = nil) -> NSMutableAttributedString {
         let attributedString = NSMutableAttributedString(string: string)
         if let andColorRange = andColorRange {
             if checkRange(andColorRange) == .correct {
@@ -332,7 +351,19 @@ public extension WBString {
                                                   range: andColorRange)
                 }
                 else{
-                    WB_Log("color is nil! ____ 颜色为nil!")
+                    WBALog("color is nil! ____ 颜色为nil!")
+                }
+            }
+        }else{
+            let range = NSMakeRange(0, string.str.length)
+            if checkRange(range) == .correct {
+                if let color = color {
+                    attributedString.addAttribute(NSForegroundColorAttributeName,
+                                                  value: color,
+                                                  range: range)
+                }
+                else{
+                    WBALog("color is nil! ____ 颜色为nil!")
                 }
             }
         }
@@ -344,7 +375,19 @@ public extension WBString {
                                                   range: andFontRange)
                 }
                 else{
-                    WB_Log("font is nil! ____字体为nil!")
+                    WBALog("font is nil! ____字体为nil!")
+                }
+            }
+        }else{
+            let range = NSMakeRange(0, string.str.length)
+            if checkRange(range) == .correct {
+                if let andFont = andFont {
+                    attributedString.addAttribute(NSFontAttributeName,
+                                                  value: andFont,
+                                                  range: range)
+                }
+                else{
+                    WBALog("font is nil! ____ 字体为nil!")
                 }
             }
         }
@@ -352,10 +395,19 @@ public extension WBString {
     }
     
     // 改变多段字符串为同种颜色
-    public func changeColor(_ color:UIColor, ranges andRanges:[NSRange]) -> NSMutableAttributedString {
+    public func changeColor(_ color:UIColor, ranges andRanges:[NSRange]? = nil) -> NSMutableAttributedString {
         let attributedString = NSMutableAttributedString(string: string)
-        for range in andRanges {
-            if checkRange(range) == .correct{
+        if let ranges = andRanges {
+            for range in ranges {
+                if checkRange(range) == .correct{
+                    attributedString.addAttribute(NSForegroundColorAttributeName,
+                                                  value: color,
+                                                  range: range)
+                }
+            }
+        }else{
+            let range = NSMakeRange(0, string.str.length)
+            if checkRange(range) == .correct {
                 attributedString.addAttribute(NSForegroundColorAttributeName,
                                               value: color,
                                               range: range)
@@ -365,10 +417,19 @@ public extension WBString {
     }
     
     // 改变多段字符串为同种字体大小
-    public func changeFont(_ font:UIFont, ranges andRanges:[NSRange]) -> NSMutableAttributedString {
+    public func changeFont(_ font:UIFont, ranges andRanges:[NSRange]? = nil) -> NSMutableAttributedString {
         let attributedString = NSMutableAttributedString(string: string)
-        for range in andRanges {
-            if checkRange(range) == .correct{
+        if let ranges = andRanges {
+            for range in ranges {
+                if checkRange(range) == .correct{
+                    attributedString.addAttribute(NSFontAttributeName,
+                                                  value: font,
+                                                  range: range)
+                }
+            }
+        }else{
+            let range = NSMakeRange(0, string.str.length)
+            if checkRange(range) == .correct {
                 attributedString.addAttribute(NSFontAttributeName,
                                               value: font,
                                               range: range)
@@ -389,15 +450,15 @@ public extension WBString {
         for dictionary in changes {
             let color = dictionary.object(forKey: WBStringKey.colorKey)
             if color == nil {
-                WB_Log("warning: NSColorKey -> nil! ____ 字典<\(dictionary)>对应的'color'->value为nil!")
+                WBALog("warning: NSColorKey -> nil! ____ 字典<\(dictionary)>对应的'color'->value为nil!")
             }
             let font = dictionary.object(forKey: WBStringKey.fontKey)
             if font == nil {
-                WB_Log("warning: NSFontKey -> nil! ____ 字典<\(dictionary)>对应的'font'->value为nil!")
+                WBALog("warning: NSFontKey -> nil! ____ 字典<\(dictionary)>对应的'font'->value为nil!")
             }
             let ranges:[NSRange]! = dictionary.object(forKey: WBStringKey.rangeKey) as? [NSRange]
             if ranges == nil{
-                WB_Log("warning: NSRangeKey -> nil! ____ 字典<\(dictionary)>对应的'range'->value为nil!")
+                WBALog("warning: NSRangeKey -> nil! ____ 字典<\(dictionary)>对应的'range'->value为nil!")
             }
             if ranges.count > 0 {
                 for range in ranges {
@@ -425,16 +486,22 @@ public extension WBString {
     // let attributedstring = string.wb_changeWithString("mno",
     //                                                  color:UIColor.red,
     //                                                  font: UIFont.smallSystemFontSize)
-    public func changeWithString(_ setString:String, color andColor:UIColor?, font andFont:UIFont?) -> NSMutableAttributedString {
+    public func changeWithString(_ setString:String, color andColor:UIColor?, font andFont:UIFont?, otherColor color: UIColor? = nil, otherFont font: UIFont? = nil) -> NSMutableAttributedString {
         let attributedString = NSMutableAttributedString(string: string)
+        if let color = color {
+            attributedString.addAttribute(NSForegroundColorAttributeName, value: color, range: NSMakeRange(0, attributedString.length))
+        }
+        if let font = font {
+            attributedString.addAttribute(NSFontAttributeName, value: font, range: NSMakeRange(0, attributedString.length))
+        }
         var len = length
         while len > setString.str.length {
             let range = (string as NSString).range(of: setString,
                                                    options: .backwards,
                                                    range: NSMakeRange(0, len))
-            if checkRange(range) == .correct{
+            if checkRange(range) == .correct {
                 if andColor == nil && andFont == nil{
-                    WB_Log("warning: color and font is nil! ____ 未对将要改变的字符串进行字体大小及颜色进行设置!")
+                    WBALog("warning: color and font is nil! ____ 未对将要改变的字符串进行字体大小及颜色进行设置!")
                 }
                 if let andColor = andColor {
                     attributedString.addAttribute(NSForegroundColorAttributeName,
@@ -447,10 +514,12 @@ public extension WBString {
                                                   range: range)
                 }
                 len = range.location
-            }
+            }else{ break }
         }
         return attributedString
     }
+    
+    // MARK: - String Line
     
     /// 为字符串添加中划线
     public var addCenterLine: NSMutableAttributedString {

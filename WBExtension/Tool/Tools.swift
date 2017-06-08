@@ -10,21 +10,15 @@ import UIKit
 
 // MARK: - DEBUG Log
 
-public func WB_Log<T>(_ message:T, file File:NSString = #file, method Method:String = #function, line Line:Int = #line) {
+public func WHLogs<T>(_ message:T, file File:NSString = #file, method Method:String = #function, line Line:Int = #line) {
     #if DEBUG
         print("\(File.lastPathComponent)[\(Line)], \(Method): \(message)")
     #endif
 }
 
-// MARK: - Color
-public func WB_RGB(_ red:CGFloat, g green:CGFloat, b blue:CGFloat, a alpha:CGFloat = 1.0) -> UIColor{
-    return UIColor(red: red/255.0, green: green/255.0, blue: blue/255.0, alpha: alpha)
-}
-
-
 // MARK: - Tools
 
-class Tools: NSObject {
+public class Tools {
 
     
     // MARK: - 获取系统缓存
@@ -48,7 +42,7 @@ class Tools: NSObject {
     
     // MARK: - 清除系统缓存
     
-    public static func clearSystemCache() -> Void{
+    public class func clearSystemCache() -> Void{
         let path = NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).last!
         let manager = FileManager.default
         guard let files = manager.subpaths(atPath: path) else {
@@ -61,7 +55,7 @@ class Tools: NSObject {
                 do {
                     try manager.removeItem(atPath: newPath)
                 } catch {
-                    WB_Log("\(newPath)的缓存目录不存在!")
+                    WHLogs("\(newPath)的缓存目录不存在!")
                 }
             }
         }

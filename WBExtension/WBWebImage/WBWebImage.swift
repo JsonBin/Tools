@@ -9,7 +9,7 @@
 import Foundation
 
 // 默认缓存大小
-public let WBWebImageCacheDefaultCost = 5_000_000  // 5MB
+public let WBWebImageCacheDefaultCost = 10_000_000  // 10MB
 
 // 默认缓存时间
 public let WBWebImageCacheDefaultExpirateTime = 7 * 24 * 60 * 60  // 7天
@@ -39,5 +39,15 @@ extension UIImageView {
     @available(iOS 8.0, *)
     public var wb:WBImageViewDSL {
         return WBImageViewDSL(imageView: self)
+    }
+}
+
+// MARK: - UIView Set Net Image
+
+extension UIView {
+    
+    @available(iOS 8.0, *)
+    public var net:WBUIViewDSL {
+        return WBUIViewDSL(view: self)
     }
 }

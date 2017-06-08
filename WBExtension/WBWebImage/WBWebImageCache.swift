@@ -56,9 +56,9 @@ public class WBWebImageCache {
     }
     
     // 缓存空间
-    public var cacheSpace: String = "WbImageDefaultCacheSpace"
+    public var cacheSpace: String = "WbImage.default.cacheSpace"
     
-    private var memeryCache: NSCache<AnyObject, AnyObject>
+    private var memeryCache:  NSCache<AnyObject, AnyObject>
     
     private var semaphore : DispatchSemaphore
     
@@ -136,8 +136,13 @@ public class WBWebImageCache {
             return obj
         }else{
             precondition(cacheType != .undefined, "you must set a cacheType but not undefined")
-            readFile(with: md5, cacheType: cacheType, semaphore: semaphore, cacheSpace: cacheSpace, completion: { (object) in
+            readFile(with: md5, cacheType: cacheType, semaphore: semaphore, cacheSpace: cacheSpace, completion: { [unowned self] (object) in
                 objc = object
+                
+                // 缓存到内存中
+                if let image = object, self.cachePolicys.contains(.memory) {
+                    self.memeryCache.setObject(image as AnyObject, forKey: md5 as AnyObject, cost: costForObject(image))
+                }
             })
         }
         return objc
@@ -164,10 +169,11 @@ public class WBWebImageCache {
             while path != nil {
                 let newPath = sandBoxPath(self.cacheSpace)+"/\(path!)"
                 do{
-                    let attrs = try self.fileManager.attributesOfItem(atPath: newPath) as NSDictionary
-                    let dateCreate = attrs["NSFileModificationDate"] as! Date
-                    if timeStamp - dateCreate.timeIntervalSince1970 > Double(self.expirateTime) {
-                        try self.fileManager.removeItem(atPath: newPath)
+                    let attrs = try self.fileManager.attributesOfItem(atPath: newPath)
+                    if let dateCreate = attrs[.modificationDate] as? Date {
+                        if timeStamp - dateCreate.timeIntervalSince1970 > Double(self.expirateTime) {
+                            try self.fileManager.removeItem(atPath: newPath)
+                        }
                     }
                     path = dir.nextObject()
                 }catch{}
@@ -240,7 +246,10 @@ public class WBWebImageCache {
                 }
                 complete(dataToObjc(data, cacheType: cacheType))
             }catch{
-                WB_Log("read data from disk failed!")
+                WHLogs("read data from disk failed!")
+                if let complete = completion {
+                    complete(nil)
+                }
             }
         }
     }
@@ -311,8 +320,11 @@ public class WBWebImageCache {
     private func fileSizeAtPath(_ path:String) -> CGFloat{
         if fileManager.fileExists(atPath: path){
             do {
-                let dictionary = try fileManager.attributesOfItem(atPath: path) as NSDictionary
-                return dictionary.object(forKey: "NSFileSize") as! CGFloat
+                let dictionary = try fileManager.attributesOfItem(atPath: path)
+                if let size = dictionary[.size] as? NSNumber {
+                    return CGFloat(size)
+                }
+                return 0
             } catch  {
                 return 0
             }
@@ -328,7 +340,7 @@ public class WBWebImageCache {
 /// - Parameter cacheSpace: 缓存目录
 /// - Returns: 缓存对应的路径
 public func sandBoxPath(_ cacheSpace:String) -> String{
-    return NSHomeDirectory()+"/Documents/WBWebImageCache/"+cacheSpace
+    return NSHomeDirectory()+"/Documents/WBWebImage.cache/"+cacheSpace
 }
 
 
